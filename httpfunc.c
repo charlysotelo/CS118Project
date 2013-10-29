@@ -16,6 +16,17 @@ void error(char *msg)
     perror(msg);
     exit(1);
 }
+ 
+void freeClientRequest( http_request * p_request)
+{
+  free(p_request->m_szHttpVersion);
+  free(p_request->m_szFileRequested);
+  free(p_request->m_szHost);
+  free(p_request->m_szClientAgent);
+  free(p_request->m_szLanguage);
+
+  free(p_request);
+}
 //----------------------------------------------------------------
 //Purpose:
 //-Used to modularily extract a parameter value from a request.
@@ -110,7 +121,8 @@ http_request * createRequest(char * message)
 
   p_request->m_szHost = malloc(strlen(buffer) + 1 );
   strcpy(p_request->m_szHost,buffer);
- 
+  
+  free(buffer);
   buffer = getValueFromParameter(messageCopy,"Connection:");
 
   if(buffer == NULL)
@@ -123,6 +135,7 @@ http_request * createRequest(char * message)
   else
     p_request->m_enumConnectionType = CONNECTION_UNKNOWN;
 
+  free(buffer);
   buffer = getValueFromParameter(messageCopy,"User-Agent:");
 
   if(buffer == NULL)
@@ -131,6 +144,7 @@ http_request * createRequest(char * message)
   p_request->m_szClientAgent = malloc(strlen(buffer) + 1 );
   strcpy(p_request->m_szClientAgent,buffer);
 
+  free(buffer);
   buffer = getValueFromParameter(messageCopy,"Accept-Language:");
 
   if(buffer == NULL)
@@ -162,25 +176,22 @@ char * handleRequest(http_request * p_request, int * replySize)
 {
   int i;
   int statusCode;
-  long int fileContentSize, headerSize;
+  long int fileContentSize = 0, headerSize;
   char   reply_header[8192] = "HTTP/1.1 ";
   char * reply_message; // size can only be determined after we get the file
   char * fileContents = NULL; 
   char lastModifiedBuffer[128] = "";
   char contentLengthBuffer[128] = "";
   char contentTypeBuffer[128] = "";
+ 
   //date
-  
-     time_t rawtime;
-     struct tm * timeinfo;
-     char dateBuffer[128];
-     
-
-     time(&rawtime);
-     timeinfo = gmtime(&rawtime);
-
-     strftime(dateBuffer,128,"Date: %a, %d %b %Y %T %Z\r\n",timeinfo); 
-
+  time_t rawtime;
+  struct tm * timeinfo;
+  char dateBuffer[128];
+   
+  time(&rawtime);
+  timeinfo = gmtime(&rawtime);
+  strftime(dateBuffer,128,"Date: %a, %d %b %Y %T %Z\r\n",timeinfo); 
   if(p_request->m_enumMethod == GET)
   { 
     if( strcmp(p_request->m_szHttpVersion,"HTTP/1.1"))
@@ -236,8 +247,8 @@ char * handleRequest(http_request * p_request, int * replySize)
         strcpy(contentTypeBuffer, "Content-Type: text/html\r\n");
       else if(!strcmp(szExtension,"txt"))
         strcpy(contentTypeBuffer, "Content-Type: text/plain\r\n");
-      else
-        error("The content type of the requested file is unsupported");
+      else//unknown type
+        strcpy(contentTypeBuffer, "Content-Type: application/octet-stream\r\n");
     }
     strcat(reply_header,"Connection: close\r\n");
     strcat(reply_header,dateBuffer);
@@ -253,7 +264,7 @@ char * handleRequest(http_request * p_request, int * replySize)
     for(i = 0 ; i < fileContentSize; i++)
       reply_message[headerSize +i] = fileContents[i];
   }
-
+  free(fileContents);
   *replySize = headerSize + fileContentSize;
   return reply_message;
 }

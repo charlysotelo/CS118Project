@@ -37,6 +37,7 @@ typedef struct http_request http_request;
 
 void error(char *msg);
 
+void freeClientRequest(http_request * p_request);
 char * getValueFromParameter(char * message, char * parameter);
 http_request * createRequest(char * message);
 char * handleRequest(http_request * p_request, int * replySize);

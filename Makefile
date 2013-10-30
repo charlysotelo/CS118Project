@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-I.
+CFLAGS=-w -I.
 DEPS = httpfuncs.h
 OBJ = server.o httpfunc.o
 
